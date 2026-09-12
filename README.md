@@ -1,0 +1,134 @@
+# O, How? Coffee & Drinks — Online Ordering System
+
+A mobile-first digital ordering system for a coffee & drinks shop: customers scan a QR code,
+order for pickup or delivery, and pay by cash (GCash/card wired for a future gateway). The owner
+manages everything — menu, prices, bestsellers, delivery settings, live orders, sales — from an
+admin dashboard, without touching code.
+
+## Tech Stack
+
+- **Frontend/Backend:** Next.js 14 (App Router) + TypeScript
+- **Database/Auth/Realtime:** Supabase (Postgres)
+- **Styling:** Tailwind CSS
+- **Charts:** Recharts
+- **Hosting:** Vercel (recommended)
+
+See `docs/ARCHITECTURE.md` for the full folder structure and design decisions.
+
+## 1. Prerequisites
+
+- Node.js 18.18+ (Node 20 recommended)
+- A free [Supabase](https://supabase.com) account
+- A [Vercel](https://vercel.com) account (for deployment — optional for local dev)
+
+## 2. Install
+
+```bash
+npm install
+```
+
+## 3. Set Up Supabase
+
+1. Create a new project at [supabase.com](https://supabase.com/dashboard).
+2. In the Supabase dashboard, go to **SQL Editor** and run the migration files in this exact
+   order (copy-paste each file's contents and click "Run"):
+   - `supabase/migrations/0001_init.sql`
+   - `supabase/migrations/0002_promotions.sql`
+   - `supabase/migrations/0003_sales_rollup.sql`
+3. Then run `supabase/seed/seed.sql` the same way to load the starter menu (O, How?'s real
+   drinks — you can edit all of this later from the admin dashboard).
+4. Go to **Database → Replication** and enable Realtime for the `orders` table. This is what
+   makes the Live Orders board, kitchen screen, and customer tracking page update instantly
+   without a page refresh.
+5. Go to **Storage** and create a public bucket named `product-images` if you want to upload
+   photos from the admin dashboard rather than linking to externally-hosted images (see the
+   Admin Guide).
+
+## 4. Environment Variables
+
+Copy `.env.example` to `.env.local`:
+
+```bash
+cp .env.example .env.local
+```
+
+Fill in the values from your Supabase project's **Settings → API** page:
+
+```
+NEXT_PUBLIC_SUPABASE_URL=https://xxxxx.supabase.co
+NEXT_PUBLIC_SUPABASE_ANON_KEY=your-anon-key
+SUPABASE_SERVICE_ROLE_KEY=your-service-role-key   # keep this secret — never commit it
+NEXT_PUBLIC_APP_URL=http://localhost:3000
+```
+
+`SUPABASE_SERVICE_ROLE_KEY` is only ever used in server-side code (API routes) — never sent to
+the browser. It's what lets the server calculate final prices and write orders even though the
+public can't write to those tables directly (see `docs/ARCHITECTURE.md` for why).
+
+Leave the `PAYMENT_PROVIDER_*` variables blank until you're ready to connect GCash/Card (see
+§8 below). Cash works with no configuration.
+
+## 5. Run Locally
+
+```bash
+npm run dev
+```
+
+Visit:
+- `http://localhost:3000` — customer ordering flow (this is what your QR code should point to)
+- `http://localhost:3000/admin/login` — admin dashboard
+- `http://localhost:3000/kitchen` — kitchen/barista screen
+
+## 6. Create Your First Admin Account
+
+There's no public sign-up screen for admins by design. To create the first one:
+
+1. In the Supabase dashboard, go to **Authentication → Users → Add User**. Set an email and
+   password.
+2. Copy the new user's ID (UUID).
+3. In the **SQL Editor**, run:
+
+```sql
+insert into admins (id, full_name, role, is_active)
+values ('paste-the-user-id-here', 'Your Name', 'admin', true);
+```
+
+4. Sign in at `/admin/login` with that email/password.
+
+To add staff (who can view orders and use the kitchen screen but not change the menu or
+settings), repeat with `role = 'staff'`.
+
+## 7. Changing the Menu (No Code)
+
+Everything below is done from `/admin/menu`, `/admin/categories`, and `/admin/settings` — see
+`docs/ADMIN_GUIDE.md` for click-by-click steps.
+
+- **Add/edit/disable products, change prices, mark bestsellers** → `/admin/menu`
+- **Add/rename/disable categories** → `/admin/categories`
+- **Delivery minimum, delivery fee, business hours, payment toggles** → `/admin/settings`
+
+Product **customization options** (sizes, sugar levels, add-ons) currently need to be set up via
+SQL in `product_option_groups`/`product_options` (see the seed file for the exact pattern) — a
+UI for this is a natural next addition once the core flow is validated with real customers.
+
+## 8. Connecting a Real Payment Gateway
+
+Cash works immediately. GCash and Card are structured but not wired to a live gateway yet
+(`src/lib/payments/` is where a PayMongo or Xendit integration would plug in — the `payments`
+table already tracks `provider`, `provider_reference`, and `status` for this). No raw card data
+is ever stored, per the brief's security requirement.
+
+## 9. Deploying to Vercel
+
+1. Push this repo to GitHub.
+2. In Vercel, "Add New Project" → import the repo.
+3. Add the same environment variables from `.env.local` in Vercel's Project Settings →
+   Environment Variables.
+4. Deploy. Point your QR code at `https://your-domain.vercel.app/`.
+
+## Project Status
+
+Phases 1–3 (schema, customer ordering flow, admin dashboard) and the Sales/Analytics/Customers/
+Export pieces of Phase 4 are built and have been type-checked and built successfully. Known
+scope cuts, documented rather than hidden, are listed in `docs/ARCHITECTURE.md` under
+"Scope notes."
