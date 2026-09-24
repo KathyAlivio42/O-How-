@@ -1,0 +1,54 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  --font-sans: "Inter", system-ui, sans-serif;
+}
+
+body {
+  background-color: #FFFDF6; /* creamy white */
+  color: #242A1E;
+}
+
+.no-scrollbar::-webkit-scrollbar {
+  display: none;
+}
+.no-scrollbar {
+  -ms-overflow-style: none;
+  scrollbar-width: none;
+}
+
+/* ---------------------------------------------------------------------
+   Order tracking: animated progress line + pulsing current step.
+--------------------------------------------------------------------- */
+@keyframes step-pulse-ring {
+  0% { box-shadow: 0 0 0 0 rgba(79, 122, 28, 0.45); }
+  100% { box-shadow: 0 0 0 10px rgba(79, 122, 28, 0); }
+}
+@keyframes progress-shimmer {
+  0% { background-position: 0 -100%; }
+  100% { background-position: 0 200%; }
+}
+
+.step-pulse {
+  animation: step-pulse-ring 1.6s ease-out infinite;
+}
+.progress-line-active {
+  background-image: linear-gradient(
+    180deg,
+    #4F7A1C 0%,
+    #4F7A1C 35%,
+    #8FBF52 50%,
+    #4F7A1C 65%,
+    #4F7A1C 100%
+  );
+  background-size: 100% 250%;
+  animation: progress-shimmer 1.6s linear infinite;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .step-pulse, .progress-line-active {
+    animation: none !important;
+  }
+}
